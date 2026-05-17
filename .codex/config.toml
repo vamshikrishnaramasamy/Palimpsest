@@ -1,9 +1,0 @@
-[mcp_servers.figma]
-args = [
-    "-y",
-    "figma-mcp",
-]
-command = "npx"
-
-[mcp_servers.figma.env]
-FIGMA_API_KEY = ""
