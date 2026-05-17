@@ -39,8 +39,8 @@ export async function POST({ request, locals }) {
   if (avatarFile && avatarFile.size > 0) {
     mkdirSync('data/images', { recursive: true });
     const buf = Buffer.from(await avatarFile.arrayBuffer());
-    const ext = avatarFile.name.split('.').pop() || 'jpg';
-    const filename = `avatar-${locals.user.id}.${ext}`;
+    const ext = avatarFile.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+    const filename = `avatar-${locals.user.id}-${Date.now()}.${ext}`;
     writeFileSync(`data/images/${filename}`, buf);
     const url = `/api/images/${filename}`;
     db.prepare('UPDATE profiles SET avatar_url = ? WHERE id = ?').run(url, locals.user.id);
@@ -51,6 +51,15 @@ export async function POST({ request, locals }) {
     db.prepare('UPDATE profiles SET password_hash = ? WHERE id = ?').run(hash, locals.user.id);
   }
 
-  const profile = db.prepare('SELECT id, email, display_name, avatar_url FROM profiles WHERE id = ?').get(locals.user.id);
-  return json(profile);
+  const profile = db.prepare('SELECT id, email, display_name, avatar_url, created_at FROM profiles WHERE id = ?').get(locals.user.id) as any;
+  const postCount = db.prepare('SELECT COUNT(*) as c FROM posts WHERE user_id = ?').get(locals.user.id) as any;
+  const followerCount = db.prepare('SELECT COUNT(*) as c FROM follows WHERE following_id = ?').get(locals.user.id) as any;
+  const followingCount = db.prepare('SELECT COUNT(*) as c FROM follows WHERE follower_id = ?').get(locals.user.id) as any;
+
+  return json({
+    ...profile,
+    posts_count: postCount.c,
+    followers_count: followerCount.c,
+    following_count: followingCount.c
+  });
 }

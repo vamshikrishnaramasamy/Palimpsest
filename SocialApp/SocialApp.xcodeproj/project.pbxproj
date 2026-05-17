@@ -15,6 +15,8 @@
 		2B06DDB43D0E30E8041C0532 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FC0044BD2990FC225AED11A /* LoginView.swift */; };
 		475062775BB7DEC2089D19FA /* EditProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFDF9F75CD860C036840E304 /* EditProfileView.swift */; };
 		521A174028BDDA57A333A199 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD24B437E232F4E64725EE5E /* App.swift */; };
+		6A1F9A0C7B2E4D2100000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6A1F9A0C7B2E4D2100000002 /* Assets.xcassets */; };
+		6A1F9A0C7B2E4D2100000004 /* SocialAuthConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A1F9A0C7B2E4D2100000005 /* SocialAuthConfig.swift */; };
 		860EF1F1316A7A3ED404E2D9 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61F34E8BCCBF3521B5B7351F /* MainTabView.swift */; };
 		981EAF3F2A5CC2F9249B3364 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF4846DA676780FDAE4593F7 /* PostDetailView.swift */; };
 		AE7C72A44FEE8DAB44061912 /* FeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E743258DB5F9FFB5309D36E2 /* FeedView.swift */; };
@@ -29,11 +31,13 @@
 		0A1B2C3D4E5F600000000013 /* Comment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Comment.swift; sourceTree = "<group>"; };
 		0A1B2C3D4E5F600000000014 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		182744127C47B7F6D199B42E /* PostCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostCard.swift; sourceTree = "<group>"; };
-		227ACE8C25890D5A6652A5C7 /* SocialApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SocialApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		227ACE8C25890D5A6652A5C7 /* SocialApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SocialApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		26F2AD7A21C0D626EB71BE9F /* CreatePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePostView.swift; sourceTree = "<group>"; };
 		445DC1ACE47032CEE2826024 /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
 		4B310932FA4009B263DE099C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		61F34E8BCCBF3521B5B7351F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		6A1F9A0C7B2E4D2100000002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		6A1F9A0C7B2E4D2100000005 /* SocialAuthConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialAuthConfig.swift; sourceTree = "<group>"; };
 		6FC0044BD2990FC225AED11A /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
 		AFDF9F75CD860C036840E304 /* EditProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditProfileView.swift; sourceTree = "<group>"; };
 		C429C28C904A7CF683657D09 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -47,7 +51,9 @@
 			isa = PBXGroup;
 			children = (
 				DD24B437E232F4E64725EE5E /* App.swift */,
+				6A1F9A0C7B2E4D2100000005 /* SocialAuthConfig.swift */,
 				4B310932FA4009B263DE099C /* Info.plist */,
+				6A1F9A0C7B2E4D2100000002 /* Assets.xcassets */,
 				96B0488B6B1A262E2E5C3C1C /* Components */,
 				E5B4D6DBC842CC10B7399B43 /* Views */,
 			);
@@ -121,6 +127,7 @@
 			buildConfigurationList = FC78F990FF04E76DFEA7F3FE /* Build configuration list for PBXNativeTarget "SocialApp" */;
 			buildPhases = (
 				3D95A1C8AC5D332DBA8E6D64 /* Sources */,
+				6A1F9A0C7B2E4D2100000003 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -141,8 +148,6 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
-				TargetAttributes = {
-				};
 			};
 			buildConfigurationList = C38FE1C3CD9C2141E292B7BA /* Build configuration list for PBXProject "SocialApp" */;
 			developmentRegion = en;
@@ -163,6 +168,17 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		6A1F9A0C7B2E4D2100000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6A1F9A0C7B2E4D2100000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		3D95A1C8AC5D332DBA8E6D64 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -181,6 +197,7 @@
 				1F9B58B09ADFA28D55E442C5 /* PostCard.swift in Sources */,
 				981EAF3F2A5CC2F9249B3364 /* PostDetailView.swift in Sources */,
 				F91063286B2B594D01571E7A /* ProfileView.swift in Sources */,
+				6A1F9A0C7B2E4D2100000004 /* SocialAuthConfig.swift in Sources */,
 				0A1B2C3D4E5F600000000001 /* User.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -193,12 +210,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = CBS3KK9BMS;
+				GOOGLE_IOS_CLIENT_ID = "1023201839732-c1cm06i2vum17d8mcr123uause21vlcr.apps.googleusercontent.com";
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.1023201839732-c1cm06i2vum17d8mcr123uause21vlcr";
 				INFOPLIST_FILE = SocialApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.palimpsest.social;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vamshikrishnaramasamy.overlap.dev;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -331,12 +351,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = CBS3KK9BMS;
+				GOOGLE_IOS_CLIENT_ID = "1023201839732-c1cm06i2vum17d8mcr123uause21vlcr.apps.googleusercontent.com";
+				GOOGLE_REVERSED_CLIENT_ID = "com.googleusercontent.apps.1023201839732-c1cm06i2vum17d8mcr123uause21vlcr";
 				INFOPLIST_FILE = SocialApp/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = dev.palimpsest.social;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vamshikrishnaramasamy.overlap.dev;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

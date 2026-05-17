@@ -1,4 +1,7 @@
 import SwiftUI
+import AuthenticationServices
+import CryptoKit
+import UIKit
 
 struct LoginView: View {
     @EnvironmentObject var auth: AuthViewModel
@@ -7,6 +10,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var isSignUp = true
     @State private var isLoading = false
+    @State private var googleCoordinator = GoogleSignInCoordinator()
 
     private let surfaceInput = Color(red: 238/255, green: 238/255, blue: 238/255)
     private let borderColor = Color(red: 230/255, green: 230/255, blue: 230/255)
@@ -16,7 +20,7 @@ struct LoginView: View {
         VStack(spacing: 0) {
             Spacer()
 
-            overlapLogo(width: 200, height: 160, textSize: 42)
+            palimpsestLogo(width: 240, height: 160, textSize: 38)
                 .padding(.bottom, 30)
 
             VStack(spacing: 6) {
@@ -109,8 +113,8 @@ struct LoginView: View {
             .padding(.vertical, 16)
 
             VStack(spacing: 8) {
-                socialButton(title: "Continue with Google", systemImage: "g.circle")
-                socialButton(title: "Continue with Apple", systemImage: "apple.logo")
+                socialButton(title: "Continue with Google", systemImage: "g.circle", action: handleGoogleSignIn)
+                    .disabled(isLoading)
             }
             .padding(.horizontal, 32)
 
@@ -146,7 +150,22 @@ struct LoginView: View {
         }
     }
 
-    private func overlapLogo(width: CGFloat, height: CGFloat, textSize: CGFloat) -> some View {
+    private func handleGoogleSignIn() {
+        isLoading = true
+        googleCoordinator.signIn { result in
+            Task {
+                switch result {
+                case .success(let credential):
+                    await auth.signInWithOAuth(provider: "google", idToken: credential.idToken, displayName: credential.displayName)
+                case .failure(let error):
+                    await MainActor.run { auth.error = error.localizedDescription }
+                }
+                await MainActor.run { isLoading = false }
+            }
+        }
+    }
+
+    private func palimpsestLogo(width: CGFloat, height: CGFloat, textSize: CGFloat) -> some View {
         ZStack {
             Circle()
                 .fill(Color(red: 176/255, green: 176/255, blue: 176/255).opacity(0.7))
@@ -158,15 +177,15 @@ struct LoginView: View {
                 .frame(width: 140, height: 140)
                 .offset(x: 20)
 
-            Text("OverLap")
+            Text("Palimpsest")
                 .font(.system(size: textSize, weight: .bold, design: .default))
                 .foregroundColor(.black)
         }
         .frame(width: width, height: height)
     }
 
-    private func socialButton(title: String, systemImage: String) -> some View {
-        Button(action: {}) {
+    private func socialButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: systemImage)
                     .font(.system(size: 18))
@@ -179,6 +198,154 @@ struct LoginView: View {
             .background(surfaceInput)
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
+    }
+}
+
+private struct SocialCredential {
+    let idToken: String
+    let displayName: String?
+}
+
+private enum SocialSignInError: LocalizedError {
+    case missingToken
+    case googleNotConfigured
+    case invalidCallback
+    case invalidTokenResponse
+
+    var errorDescription: String? {
+        switch self {
+        case .missingToken:
+            return "The identity provider did not return a token."
+        case .googleNotConfigured:
+            return "Google sign-in needs your iOS OAuth client ID and reversed URL scheme in SocialAuthConfig.swift."
+        case .invalidCallback:
+            return "Google sign-in returned an invalid callback."
+        case .invalidTokenResponse:
+            return "Google sign-in returned an invalid token response."
+        }
+    }
+}
+
+private final class GoogleSignInCoordinator: NSObject, ASWebAuthenticationPresentationContextProviding {
+    private var session: ASWebAuthenticationSession?
+    private var codeVerifier = ""
+
+    func signIn(completion: @escaping (Result<SocialCredential, Error>) -> Void) {
+        guard !SocialAuthConfig.googleClientID.isEmpty,
+              !SocialAuthConfig.googleRedirectScheme.isEmpty else {
+            completion(.failure(SocialSignInError.googleNotConfigured))
+            return
+        }
+
+        codeVerifier = Self.randomURLSafeString(length: 64)
+        let challenge = Self.codeChallenge(for: codeVerifier)
+
+        var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+        components.queryItems = [
+            URLQueryItem(name: "client_id", value: SocialAuthConfig.googleClientID),
+            URLQueryItem(name: "redirect_uri", value: SocialAuthConfig.googleRedirectURI),
+            URLQueryItem(name: "response_type", value: "code"),
+            URLQueryItem(name: "scope", value: "openid email profile"),
+            URLQueryItem(name: "code_challenge", value: challenge),
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
+            URLQueryItem(name: "prompt", value: "select_account")
+        ]
+
+        guard let url = components.url else {
+            completion(.failure(SocialSignInError.invalidCallback))
+            return
+        }
+
+        let authSession = ASWebAuthenticationSession(url: url, callbackURLScheme: SocialAuthConfig.googleRedirectScheme) { [weak self] callbackURL, error in
+            if let error {
+                completion(.failure(error))
+                return
+            }
+            guard let self, let callbackURL else {
+                completion(.failure(SocialSignInError.invalidCallback))
+                return
+            }
+            Task {
+                do {
+                    let credential = try await self.exchangeCallback(callbackURL)
+                    completion(.success(credential))
+                } catch {
+                    completion(.failure(error))
+                }
+            }
+        }
+        authSession.presentationContextProvider = self
+        authSession.prefersEphemeralWebBrowserSession = true
+        session = authSession
+        authSession.start()
+    }
+
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow } ?? ASPresentationAnchor()
+    }
+
+    private func exchangeCallback(_ callbackURL: URL) async throws -> SocialCredential {
+        guard let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
+              let code = components.queryItems?.first(where: { $0.name == "code" })?.value else {
+            throw SocialSignInError.invalidCallback
+        }
+
+        var request = URLRequest(url: URL(string: "https://oauth2.googleapis.com/token")!)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let fields = [
+            "client_id": SocialAuthConfig.googleClientID,
+            "redirect_uri": SocialAuthConfig.googleRedirectURI,
+            "grant_type": "authorization_code",
+            "code": code,
+            "code_verifier": codeVerifier
+        ]
+        request.httpBody = fields
+            .map { "\($0.key)=\(Self.formEncode($0.value))" }
+            .joined(separator: "&")
+            .data(using: .utf8)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw SocialSignInError.invalidTokenResponse
+        }
+        let token = try JSONDecoder().decode(GoogleTokenResponse.self, from: data)
+        guard let idToken = token.id_token else {
+            throw SocialSignInError.missingToken
+        }
+        return SocialCredential(idToken: idToken, displayName: nil)
+    }
+
+    private static func codeChallenge(for verifier: String) -> String {
+        let digest = SHA256.hash(data: Data(verifier.utf8))
+        return Data(digest).base64URLEncodedString()
+    }
+
+    private static func randomURLSafeString(length: Int) -> String {
+        let alphabet = Array("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~")
+        return String((0..<length).compactMap { _ in alphabet.randomElement() })
+    }
+
+    private static func formEncode(_ value: String) -> String {
+        var allowed = CharacterSet.urlQueryAllowed
+        allowed.remove(charactersIn: ":#[]@!$&'()*+,;=")
+        return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
+    }
+}
+
+private struct GoogleTokenResponse: Decodable {
+    let id_token: String?
+}
+
+private extension Data {
+    func base64URLEncodedString() -> String {
+        base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 }
 

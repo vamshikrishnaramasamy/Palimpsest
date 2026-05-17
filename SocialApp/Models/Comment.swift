@@ -34,4 +34,34 @@ struct Profile: Codable {
 
     var displayName: String { display_name ?? email.components(separatedBy: "@").first ?? "User" }
     var initials: String { String(displayName.prefix(1)).uppercased() }
+    var avatarURL: URL? {
+        guard let avatar_url else { return nil }
+        if avatar_url.hasPrefix("http") { return URL(string: avatar_url) }
+        return URL(string: "http://64.181.233.156\(avatar_url)")
+    }
+}
+
+struct PublicProfile: Codable {
+    let id: String
+    let email: String?
+    let display_name: String?
+    let avatar_url: String?
+    let posts_count: Int
+    let followers_count: Int
+    let following_count: Int
+    let followed_by_me: Bool
+    let is_me: Bool
+
+    var displayName: String { display_name ?? email?.components(separatedBy: "@").first ?? "User" }
+    var initials: String { String(displayName.prefix(1)).uppercased() }
+    var avatarURL: URL? {
+        guard let avatar_url else { return nil }
+        if avatar_url.hasPrefix("http") { return URL(string: avatar_url) }
+        return URL(string: "http://64.181.233.156\(avatar_url)")
+    }
+}
+
+struct FollowResponse: Codable {
+    let following: Bool
+    let followers_count: Int
 }

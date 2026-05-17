@@ -103,6 +103,20 @@ class APIClient {
         return user
     }
 
+    func signInWithOAuth(provider: String, idToken: String, displayName: String? = nil) async throws -> User {
+        var body = ["provider": provider, "id_token": idToken]
+        if let displayName {
+            body["display_name"] = displayName
+        }
+        let data = try await post("/api/auth/oauth", body: body)
+        let response = try JSONDecoder().decode(AuthResponseWithToken.self, from: data)
+        if let token = response.token {
+            authToken = token
+        }
+        guard let user = response.user else { throw APIClientError.invalidResponse }
+        return user
+    }
+
     func signOut() async throws {
         _ = try await post("/api/auth/signout")
         authToken = nil
@@ -125,12 +139,14 @@ class APIClient {
         imageData: Data?,
         latitude: Double? = nil,
         longitude: Double? = nil,
+        isPrivate: Bool = false,
         mediaFilename: String = "attachment.jpg",
         mediaContentType: String = "image/jpeg"
     ) async throws -> Post {
         let boundary = UUID().uuidString
         var request = URLRequest(url: URL(string: "\(baseURL)/api/posts")!)
         request.httpMethod = "POST"
+        request.timeoutInterval = 75
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         applyAuth(&request)
 
@@ -150,6 +166,10 @@ class APIClient {
             bodyData.append("Content-Disposition: form-data; name=\"lat\"\r\n\r\n".data(using: .utf8)!)
             bodyData.append("\(latitude)\r\n".data(using: .utf8)!)
         }
+
+        bodyData.append("--\(boundary)\r\n".data(using: .utf8)!)
+        bodyData.append("Content-Disposition: form-data; name=\"is_private\"\r\n\r\n".data(using: .utf8)!)
+        bodyData.append("\(isPrivate ? "true" : "false")\r\n".data(using: .utf8)!)
 
         if let imageData = imageData {
             bodyData.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -185,6 +205,16 @@ class APIClient {
     func getProfile() async throws -> Profile {
         let data = try await get("/api/profile")
         return try JSONDecoder().decode(Profile.self, from: data)
+    }
+
+    func getUserProfile(id: String) async throws -> PublicProfile {
+        let data = try await get("/api/users/\(id)")
+        return try JSONDecoder().decode(PublicProfile.self, from: data)
+    }
+
+    func toggleFollow(userId: String) async throws -> FollowResponse {
+        let data = try await post("/api/users/\(userId)/follow")
+        return try JSONDecoder().decode(FollowResponse.self, from: data)
     }
 
     func updateProfile(displayName: String?, avatarData: Data?) async throws -> Profile {

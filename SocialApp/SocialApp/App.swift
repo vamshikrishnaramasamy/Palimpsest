@@ -58,6 +58,16 @@ class AuthViewModel: ObservableObject {
         }
     }
 
+    func signInWithOAuth(provider: String, idToken: String, displayName: String? = nil) async {
+        do {
+            let loggedInUser = try await APIClient.shared.signInWithOAuth(provider: provider, idToken: idToken, displayName: displayName)
+            user = loggedInUser
+            error = nil
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
     func signOut() async {
         try? await APIClient.shared.signOut()
         user = nil

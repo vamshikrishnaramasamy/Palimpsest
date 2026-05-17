@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import CoreLocation
 import UniformTypeIdentifiers
+import UIKit
 
 struct CreatePostView: View {
     @Environment(\.dismiss) private var dismiss
@@ -11,10 +12,14 @@ struct CreatePostView: View {
     @State private var selectedLayerType = "Memory"
     @State private var selectedItem: PhotosPickerItem?
     @State private var selectedMedia: LayerAttachment?
+    @State private var isPrivateLayer = false
     @State private var showAudioImporter = false
     @State private var isPosting = false
     @State private var showError = false
     @State private var errorMessage = ""
+
+    @FocusState private var isTyping: Bool
+
     @StateObject private var locationProvider = LayerLocationProvider()
 
     var onPostCreated: (() -> Void)?
@@ -28,6 +33,7 @@ struct CreatePostView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     explainerCard
                     placeCard
+                    privacySection
                     layerTypeSection
                     mediaSection
                     storySection
@@ -35,6 +41,9 @@ struct CreatePostView: View {
                 }
                 .padding(20)
                 .padding(.bottom, 96)
+            }
+            .onTapGesture {
+                isTyping = false
             }
             .safeAreaInset(edge: .bottom) {
                 submitBar
@@ -50,13 +59,9 @@ struct CreatePostView: View {
                     guard let newItem,
                           let data = try? await newItem.loadTransferable(type: Data.self) else { return }
                     let contentType = newItem.supportedContentTypes.first ?? .jpeg
+                    let attachment = prepareAttachment(data: data, contentType: contentType)
                     await MainActor.run {
-                        selectedMedia = LayerAttachment(
-                            data: data,
-                            filename: "layer-\(UUID().uuidString).\(contentType.preferredFilenameExtension ?? "jpg")",
-                            contentType: contentType.preferredMIMEType ?? "application/octet-stream",
-                            kind: contentType.conforms(to: .movie) ? .video : .image
-                        )
+                        selectedMedia = attachment
                     }
                 }
             }
@@ -169,9 +174,11 @@ struct CreatePostView: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     TextField("Where are you?", text: $placeName)
+                        .focused($isTyping)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.black)
                         .textInputAutocapitalization(.words)
+
                     Text(locationProvider.locationStatusText)
                         .font(.caption)
                         .foregroundColor(.gray)
@@ -197,6 +204,7 @@ struct CreatePostView: View {
             HStack(spacing: 8) {
                 ForEach(layerTypes, id: \.self) { type in
                     Button {
+                        isTyping = false
                         selectedLayerType = type
                     } label: {
                         Text(type)
@@ -212,6 +220,49 @@ struct CreatePostView: View {
         }
     }
 
+    private var privacySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Visibility")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundColor(.gray)
+                .textCase(.uppercase)
+
+            HStack(spacing: 8) {
+                privacyButton(title: "Public", subtitle: "Visible in feeds and map", icon: "globe", selected: !isPrivateLayer) {
+                    isTyping = false
+                    isPrivateLayer = false
+                }
+
+                privacyButton(title: "Private", subtitle: "Only you can see it", icon: "lock.fill", selected: isPrivateLayer) {
+                    isTyping = false
+                    isPrivateLayer = true
+                }
+            }
+        }
+    }
+
+    private func privacyButton(title: String, subtitle: String, icon: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 14, weight: .bold))
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(selected ? .white.opacity(0.75) : .gray)
+                    .lineLimit(2)
+            }
+            .foregroundColor(selected ? .white : .black)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(13)
+            .background(selected ? Color.black : Color(red: 0.94, green: 0.94, blue: 0.94))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var storySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
@@ -220,7 +271,9 @@ struct CreatePostView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.gray)
                     .textCase(.uppercase)
+
                 Spacer()
+
                 Text("\(postBody.count)/\(maxCharacterCount)")
                     .font(.caption)
                     .foregroundColor(postBody.count > maxCharacterCount ? .red : .gray)
@@ -231,18 +284,29 @@ struct CreatePostView: View {
                     .fill(Color(red: 0.97, green: 0.97, blue: 0.97))
 
                 if postBody.isEmpty {
-                    Text(selectedLayerType == "Audio" ? "Add an optional caption for this audio layer." : "What happened here? What should someone feel when they unlock this place?")
+                    Text(selectedLayerType == "Audio" ? "Add an optional caption for this audio layer." : "Leave a description!")
                         .font(.system(size: 16))
                         .foregroundColor(.gray)
                         .padding(16)
                 }
 
                 TextEditor(text: $postBody)
+                    .focused($isTyping)
                     .font(.system(size: 16))
                     .foregroundColor(.black)
                     .scrollContentBackground(.hidden)
                     .padding(12)
                     .frame(minHeight: 180)
+                    .toolbar {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+
+                            Button("Done") {
+                                isTyping = false
+                            }
+                            .foregroundColor(.black)
+                        }
+                    }
             }
         }
     }
@@ -256,8 +320,11 @@ struct CreatePostView: View {
                     .fontWeight(.semibold)
                     .foregroundColor(.gray)
                     .textCase(.uppercase)
+
                 Spacer()
+
                 Button {
+                    isTyping = false
                     clearAttachment()
                 } label: {
                     Text(selectedMedia == nil ? "" : "Remove")
@@ -272,6 +339,7 @@ struct CreatePostView: View {
                     attachmentPreview(selectedMedia)
 
                     Button {
+                        isTyping = false
                         clearAttachment()
                     } label: {
                         Image(systemName: "xmark")
@@ -288,12 +356,19 @@ struct CreatePostView: View {
                 PhotosPicker(selection: $selectedItem, matching: .images) {
                     compactMediaButton(icon: "photo", title: "Image", isActive: selectedMedia?.kind == .image)
                 }
+                .simultaneousGesture(TapGesture().onEnded {
+                    isTyping = false
+                })
 
                 PhotosPicker(selection: $selectedItem, matching: .videos) {
                     compactMediaButton(icon: "video.fill", title: "Video", isActive: selectedMedia?.kind == .video)
                 }
+                .simultaneousGesture(TapGesture().onEnded {
+                    isTyping = false
+                })
 
                 Button {
+                    isTyping = false
                     showAudioImporter = true
                 } label: {
                     compactMediaButton(icon: "waveform", title: "Audio", isActive: selectedMedia?.kind == .audio)
@@ -307,6 +382,7 @@ struct CreatePostView: View {
         VStack(spacing: 7) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
+
             Text(title)
                 .font(.caption)
                 .fontWeight(.semibold)
@@ -326,14 +402,17 @@ struct CreatePostView: View {
                 .font(.system(size: 22))
                 .foregroundColor(.black)
                 .frame(width: 28)
+
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(.black)
+
                 Text(subtitle)
                     .font(.caption)
                     .foregroundColor(.gray)
             }
+
             Spacer()
         }
         .padding(16)
@@ -356,8 +435,10 @@ struct CreatePostView: View {
             } else {
                 mediaPreviewCard(icon: "photo", title: "Image attached", subtitle: attachment.filename)
             }
+
         case .video:
             mediaPreviewCard(icon: "video.fill", title: "Video attached", subtitle: attachment.filename)
+
         case .audio:
             mediaPreviewCard(icon: "waveform", title: "Audio attached", subtitle: attachment.filename)
         }
@@ -370,15 +451,18 @@ struct CreatePostView: View {
                 .foregroundColor(.black)
                 .frame(width: 50, height: 50)
                 .background(Circle().fill(Color.white))
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.black)
+
                 Text(subtitle)
                     .font(.caption)
                     .foregroundColor(.gray)
                     .lineLimit(1)
             }
+
             Spacer()
         }
         .padding(16)
@@ -398,12 +482,14 @@ struct CreatePostView: View {
     private var submitBar: some View {
         VStack(spacing: 0) {
             Divider().opacity(0.35)
+
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(selectedLayerType)
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.gray)
+
                     Text(placeName.isEmpty ? "Unnamed place" : placeName)
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.black)
@@ -413,6 +499,7 @@ struct CreatePostView: View {
                 Spacer()
 
                 Button {
+                    isTyping = false
                     Task { await createPost() }
                 } label: {
                     Text(isPosting ? "Leaving..." : "Leave Layer")
@@ -434,8 +521,11 @@ struct CreatePostView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .navigationBarLeading) {
-            Button("Cancel") { dismiss() }
-                .foregroundColor(.black)
+            Button("Cancel") {
+                isTyping = false
+                dismiss()
+            }
+            .foregroundColor(.black)
         }
     }
 
@@ -444,6 +534,7 @@ struct CreatePostView: View {
         if isPosting {
             Color.black.opacity(0.18)
                 .ignoresSafeArea()
+
             ProgressView()
                 .tint(.black)
                 .scaleEffect(1.2)
@@ -465,11 +556,37 @@ struct CreatePostView: View {
         selectedMedia = nil
     }
 
+    private func prepareAttachment(data: Data, contentType: UTType) -> LayerAttachment {
+        if contentType.conforms(to: .image),
+           let image = UIImage(data: data),
+           let resized = image.resizedForLayerUpload(maxDimension: 1600),
+           let compressed = resized.jpegData(compressionQuality: 0.72) {
+            return LayerAttachment(
+                data: compressed,
+                filename: "layer-\(UUID().uuidString).jpg",
+                contentType: "image/jpeg",
+                kind: .image
+            )
+        }
+
+        let kind: LayerAttachment.Kind = contentType.conforms(to: .movie) ? .video : .image
+
+        return LayerAttachment(
+            data: data,
+            filename: "layer-\(UUID().uuidString).\(contentType.preferredFilenameExtension ?? "jpg")",
+            contentType: contentType.preferredMIMEType ?? "application/octet-stream",
+            kind: kind
+        )
+    }
+
     private func createPost() async {
         let body = postBody.trimmingCharacters(in: .whitespacesAndNewlines)
         guard hasLayerContent else { return }
 
-        await MainActor.run { isPosting = true }
+        await MainActor.run {
+            isPosting = true
+            isTyping = false
+        }
 
         let place = placeName.trimmingCharacters(in: .whitespacesAndNewlines)
         let layerText = body.isEmpty ? defaultLayerBody : body
@@ -482,9 +599,11 @@ struct CreatePostView: View {
                 imageData: selectedMedia?.data,
                 latitude: coordinate.latitude,
                 longitude: coordinate.longitude,
+                isPrivate: isPrivateLayer,
                 mediaFilename: selectedMedia?.filename ?? "attachment.jpg",
                 mediaContentType: selectedMedia?.contentType ?? "image/jpeg"
             )
+
             await MainActor.run {
                 isPosting = false
                 postBody = ""
@@ -528,6 +647,41 @@ private struct LayerAttachment {
     let kind: Kind
 }
 
+private extension UIImage {
+    func resizedForLayerUpload(maxDimension: CGFloat) -> UIImage? {
+        let normalized = normalizedForLayerUpload()
+        let longestSide = max(normalized.size.width, normalized.size.height)
+
+        guard longestSide > maxDimension else {
+            return normalized
+        }
+
+        let scale = maxDimension / longestSide
+        let targetSize = CGSize(
+            width: normalized.size.width * scale,
+            height: normalized.size.height * scale
+        )
+
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+
+        return renderer.image { _ in
+            normalized.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+    }
+
+    func normalizedForLayerUpload() -> UIImage {
+        guard imageOrientation != .up else {
+            return self
+        }
+
+        let renderer = UIGraphicsImageRenderer(size: size)
+
+        return renderer.image { _ in
+            draw(in: CGRect(origin: .zero, size: size))
+        }
+    }
+}
+
 @MainActor
 private final class LayerLocationProvider: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published private var coordinate: CLLocationCoordinate2D?
@@ -551,8 +705,10 @@ private final class LayerLocationProvider: NSObject, ObservableObject, CLLocatio
         switch authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
             return coordinate == nil ? "Finding your current spot..." : "This layer will appear on the map at your current spot."
+
         case .denied, .restricted:
             return "Location is off, so this demo layer will appear near UCSD."
+
         default:
             return "Allow location so this layer appears exactly where you leave it."
         }
@@ -564,8 +720,10 @@ private final class LayerLocationProvider: NSObject, ObservableObject, CLLocatio
         switch manager.authorizationStatus {
         case .notDetermined:
             manager.requestWhenInUseAuthorization()
+
         case .authorizedAlways, .authorizedWhenInUse:
             manager.requestLocation()
+
         default:
             break
         }
@@ -574,6 +732,7 @@ private final class LayerLocationProvider: NSObject, ObservableObject, CLLocatio
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in
             authorizationStatus = manager.authorizationStatus
+
             if manager.authorizationStatus == .authorizedAlways || manager.authorizationStatus == .authorizedWhenInUse {
                 manager.requestLocation()
             }
@@ -581,7 +740,10 @@ private final class LayerLocationProvider: NSObject, ObservableObject, CLLocatio
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last else { return }
+        guard let location = locations.last else {
+            return
+        }
+
         Task { @MainActor in
             coordinate = location.coordinate
         }

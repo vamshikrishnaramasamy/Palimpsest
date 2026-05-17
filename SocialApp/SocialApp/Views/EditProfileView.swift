@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UIKit
 
 struct EditProfileView: View {
     @Environment(\.dismiss) private var dismiss
@@ -30,7 +31,7 @@ struct EditProfileView: View {
             .onChange(of: selectedItem) { _, newItem in
                 Task {
                     guard let data = try? await newItem?.loadTransferable(type: Data.self) else { return }
-                    await MainActor.run { selectedImageData = data }
+                    await MainActor.run { selectedImageData = compressedAvatarData(from: data) ?? data }
                 }
             }
             .alert("Error", isPresented: $showError) {
@@ -61,15 +62,7 @@ struct EditProfileView: View {
                             .frame(width: 80, height: 80)
                             .clipShape(Circle())
                     } else {
-                        Circle()
-                            .fill(Color(red: 0.94, green: 0.94, blue: 0.94))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Text(profile?.initials ?? "U")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.gray)
-                            )
+                        existingAvatar
                     }
 
                     PhotosPicker(selection: $selectedItem, matching: .images) {
@@ -99,6 +92,38 @@ struct EditProfileView: View {
             }
             .listRowBackground(Color.white)
         }
+    }
+
+    @ViewBuilder
+    private var existingAvatar: some View {
+        if let url = profile?.avatarURL {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .success(let image):
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 80, height: 80)
+                        .clipShape(Circle())
+                default:
+                    avatarPlaceholder
+                }
+            }
+        } else {
+            avatarPlaceholder
+        }
+    }
+
+    private var avatarPlaceholder: some View {
+        Circle()
+            .fill(Color(red: 0.94, green: 0.94, blue: 0.94))
+            .frame(width: 80, height: 80)
+            .overlay(
+                Text(profile?.initials ?? "U")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.gray)
+            )
     }
 
     // MARK: - Toolbar
@@ -166,5 +191,23 @@ struct EditProfileView: View {
                 showError = true
             }
         }
+    }
+
+    private func compressedAvatarData(from data: Data) -> Data? {
+        guard let image = UIImage(data: data) else { return nil }
+        let longestSide = max(image.size.width, image.size.height)
+        let maxDimension: CGFloat = 512
+        let targetSize: CGSize
+        if longestSide > maxDimension {
+            let scale = maxDimension / longestSide
+            targetSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        } else {
+            targetSize = image.size
+        }
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let rendered = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return rendered.jpegData(compressionQuality: 0.78)
     }
 }

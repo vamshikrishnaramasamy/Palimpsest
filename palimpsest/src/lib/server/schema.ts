@@ -27,6 +27,7 @@ export function setupDatabase() {
       image_url TEXT,
       lng REAL,
       lat REAL,
+      is_private INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
@@ -56,5 +57,19 @@ export function setupDatabase() {
       created_at TEXT DEFAULT (datetime('now')),
       PRIMARY KEY (follower_id, following_id)
     );
+
+    CREATE TABLE IF NOT EXISTS social_accounts (
+      provider TEXT NOT NULL,
+      provider_subject TEXT NOT NULL,
+      user_id TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      email TEXT,
+      created_at TEXT DEFAULT (datetime('now')),
+      PRIMARY KEY (provider, provider_subject)
+    );
   `);
+
+  try {
+    db.prepare('ALTER TABLE posts ADD COLUMN is_private INTEGER DEFAULT 0').run();
+  } catch {
+  }
 }

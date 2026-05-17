@@ -25,5 +25,12 @@ export async function POST({ params, request, locals }) {
   const db = getDb();
   db.prepare('INSERT INTO comments (id, post_id, user_id, body) VALUES (?, ?, ?, ?)').run(id, params.id, locals.user.id, body);
 
-  return json({ id, post_id: params.id, user_id: locals.user.id, body, created_at: new Date().toISOString() });
+  const comment = db.prepare(`
+    SELECT c.*, pr.display_name, pr.email
+    FROM comments c
+    JOIN profiles pr ON c.user_id = pr.id
+    WHERE c.id = ?
+  `).get(id);
+
+  return json(comment);
 }

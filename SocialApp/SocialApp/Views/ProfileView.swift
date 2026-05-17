@@ -46,7 +46,7 @@ struct ProfileView: View {
 
     private var avatarSection: some View {
         Group {
-            if let avatarUrl = profile?.avatar_url, let url = URL(string: avatarUrl) {
+            if let url = profile?.avatarURL {
                 AsyncImage(url: url) { phase in
                     switch phase {
                     case .success(let image):

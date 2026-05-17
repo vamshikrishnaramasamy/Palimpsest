@@ -16,13 +16,15 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: SocialApp/Info.plist
+        GOOGLE_IOS_CLIENT_ID: "1023201839732-c1cm06i2vum17d8mcr123uause21vlcr.apps.googleusercontent.com"
+        GOOGLE_REVERSED_CLIENT_ID: "com.googleusercontent.apps.1023201839732-c1cm06i2vum17d8mcr123uause21vlcr"
         PRODUCT_BUNDLE_IDENTIFIER: dev.palimpsest.social
         SWIFT_VERSION: "5.0"
     info:
       path: SocialApp/Info.plist
       properties:
-        CFBundleName: "Social"
-        CFBundleDisplayName: "Social"
+        CFBundleName: "Palimpsest"
+        CFBundleDisplayName: "Palimpsest"
         LSRequiresIPhoneOS: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true

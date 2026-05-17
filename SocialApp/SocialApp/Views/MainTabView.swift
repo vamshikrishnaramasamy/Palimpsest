@@ -17,7 +17,7 @@ struct MainTabView: View {
                 .tag(1)
 
             OverlapView()
-                .tabItem { Label("Overlap", systemImage: "circle.circle") }
+                .tabItem { Label("Crossings", systemImage: "circle.circle") }
                 .tag(2)
 
             NotificationsView()
@@ -95,7 +95,7 @@ struct OverlapView: View {
         .background(Color.white)
         .preferredColorScheme(.light)
         .onAppear { Task { await loadOverlap() } }
-        .alert("Overlap consent", isPresented: Binding(
+        .alert("Crossing consent", isPresented: Binding(
             get: { consentExplanation != nil },
             set: { if !$0 { consentExplanation = nil } }
         )) {
@@ -107,7 +107,7 @@ struct OverlapView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Overlap")
+            Text("Crossings")
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.gray)
@@ -154,7 +154,7 @@ struct OverlapView: View {
             VStack(spacing: 10) {
                 ForEach(people) { person in
                     Button {
-                        selectedPersonID = person.id
+                        handlePersonTap(person)
                     } label: {
                         personRow(person, selected: selectedPerson?.id == person.id)
                     }
@@ -166,7 +166,7 @@ struct OverlapView: View {
 
     private func personRow(_ person: OverlapPerson, selected: Bool) -> some View {
         let displayStatus = status(for: person)
-        HStack(spacing: 12) {
+        return HStack(spacing: 12) {
             ZStack {
                 Circle()
                     .fill(selected ? Color.black : Color.white)
@@ -208,39 +208,15 @@ struct OverlapView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18))
     }
 
-    @ViewBuilder
     private func statusPill(_ status: String, person: OverlapPerson) -> some View {
-        if status == "invite" {
-            Button {
-                sendInvite(to: person)
-            } label: {
-                Text("invite")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(Color.white)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-        } else {
-            Button {
-                consentExplanation = status == "consented"
-                    ? "Matched means both people agreed to compare historical paths. Exact shared places are visible."
-                    : "Pending means an invite was sent. Exact shared places stay hidden until the other person accepts."
-            } label: {
-                Text(statusLabel(status))
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-                    .foregroundColor(status == "consented" ? .white : .black)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(status == "consented" ? Color.black : Color.white)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
-        }
+        Text(statusLabel(status))
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .foregroundColor(status == "consented" ? .white : .black)
+            .padding(.horizontal, status == "invite" ? 8 : 7)
+            .padding(.vertical, status == "invite" ? 5 : 4)
+            .background(status == "consented" ? Color.black : Color.white)
+            .clipShape(Capsule())
     }
 
     private func statusLabel(_ status: String) -> String {
@@ -301,7 +277,7 @@ struct OverlapView: View {
                     Text(status(for: person) == "pending" ? "Invite pending" : "Invite to unlock exact places")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.black)
-                    Text("Overlap only reveals locations after both people consent.")
+                    Text("Palimpsest only reveals crossings after both people consent.")
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
@@ -439,6 +415,18 @@ struct OverlapView: View {
         selectedPersonID = person.id
         pendingInvites.insert(person.id)
         consentExplanation = "Invite sent to \(person.name). In the real app, they would approve before exact shared places become visible."
+    }
+
+    private func handlePersonTap(_ person: OverlapPerson) {
+        selectedPersonID = person.id
+        switch status(for: person) {
+        case "invite":
+            sendInvite(to: person)
+        case "consented":
+            consentExplanation = "Matched means both people agreed to compare historical paths. Exact shared places are visible."
+        default:
+            consentExplanation = "Pending means an invite was sent. Exact shared places stay hidden until the other person accepts."
+        }
     }
 
     private func loadOverlap() async {

@@ -11,6 +11,8 @@ struct Post: Codable, Identifiable {
     let display_name: String?
     let email: String?
     let avatar_url: String?
+    let is_private: Bool?
+    let is_following_author: Bool?
     var like_count: Int
     var comment_count: Int
     var liked_by_me: Int
@@ -27,6 +29,8 @@ struct Post: Codable, Identifiable {
         case display_name
         case email
         case avatar_url
+        case is_private
+        case is_following_author
         case like_count
         case comment_count
         case liked_by_me
@@ -44,6 +48,8 @@ struct Post: Codable, Identifiable {
         display_name: String?,
         email: String?,
         avatar_url: String?,
+        is_private: Bool? = nil,
+        is_following_author: Bool? = nil,
         like_count: Int,
         comment_count: Int,
         liked_by_me: Int,
@@ -59,6 +65,8 @@ struct Post: Codable, Identifiable {
         self.display_name = display_name
         self.email = email
         self.avatar_url = avatar_url
+        self.is_private = is_private
+        self.is_following_author = is_following_author
         self.like_count = like_count
         self.comment_count = comment_count
         self.liked_by_me = liked_by_me
@@ -77,6 +85,8 @@ struct Post: Codable, Identifiable {
         display_name = try container.decodeIfPresent(String.self, forKey: .display_name)
         email = try container.decodeIfPresent(String.self, forKey: .email)
         avatar_url = try container.decodeIfPresent(String.self, forKey: .avatar_url)
+        is_private = (try? container.decodeIfPresent(Bool.self, forKey: .is_private)) ?? ((try? container.decodeIfPresent(Int.self, forKey: .is_private)).map { $0 > 0 } ?? nil)
+        is_following_author = (try? container.decodeIfPresent(Bool.self, forKey: .is_following_author)) ?? ((try? container.decodeIfPresent(Int.self, forKey: .is_following_author)).map { $0 > 0 } ?? nil)
         like_count = try container.decode(Int.self, forKey: .like_count)
         comment_count = try container.decode(Int.self, forKey: .comment_count)
         created_at = try container.decode(String.self, forKey: .created_at)
@@ -93,7 +103,9 @@ struct Post: Codable, Identifiable {
     var displayName: String { display_name ?? email?.components(separatedBy: "@").first ?? "Anonymous" }
     var isLiked: Bool { liked_by_me > 0 }
     var avatarURL: URL? {
-        if let urlStr = avatar_url, let url = URL(string: urlStr) { return url }
+        guard let urlStr = avatar_url else { return nil }
+        if urlStr.hasPrefix("http"), let url = URL(string: urlStr) { return url }
+        if let url = URL(string: "http://64.181.233.156\(urlStr)") { return url }
         return nil
     }
 
